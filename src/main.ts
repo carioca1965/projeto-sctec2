@@ -1,119 +1,221 @@
-import { stdin , stdout } from "process";
+import { stdin, stdout } from "process";
 import { createInterface } from "node:readline/promises";
 import { readFile, writeFile } from "node:fs/promises";
 
-function validaUsuario(nomeUsuario) {
+interface UsuarioGithub {
+    id: number;
+    login: string;
+    name: string | null;
+    html_url: string;
+    public_repos: number;
+    followers: number;
+}
+
+function validaUsuario(nomeUsuario: string): string {
     nomeUsuario = nomeUsuario.trim();
 
     if (nomeUsuario === "") {
         throw new Error("Um nome de usuário deve ser informado.");
     }
 
-    const usuarioRegex = /^(?!.*--)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$/;
+    const usuarioRegex =
+        /^(?!.*--)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$/;
+
     if (!usuarioRegex.test(nomeUsuario)) {
         throw new Error("Nome de usuário inválido.");
     }
 
-    return nomeUsuario
+    return nomeUsuario;
 }
 
-async function buscarPerfil(username){
-    const urlBase = 'https://api.github.com/users/';
-    
-    try {
-        
-        const response = await fetch(`${urlBase}${username}`)
+async function buscarPerfil(
+    username: string
+): Promise<UsuarioGithub> {
+    const urlBase = "https://api.github.com/users/";
 
-        /*{
-            "message": "Not Found",
-            "documentation_url": "https://docs.github.com/rest",
-            "status": "404"
-            }*/
+    try {
+        const response = await fetch(`${urlBase}${username}`, {
+            headers: {
+                "User-Agent": "carioca1965"
+            }
+        });
 
         switch (response.status) {
             case 200:
-                return await response.json();
+                return (await response.json()) as UsuarioGithub;
+
             case 400:
-                throw new Error ('Requisição inválida');   
+                throw new Error("Requisição inválida.");
+
             case 404:
-                throw new Error (`Usuário "${username}" não encontrado no Github`);  
+                throw new Error(
+                    `Usuário "${username}" não encontrado no GitHub.`
+                );
+
             default:
-                throw new Error (`Não foi possível buscar o usuário no Github ${response.status}${response.statusText}`);    
-        }        
-    
-    } catch (error){
-        if (error.name === "TypeError") {
-            throw new Error("Erro de timeout - falha de conexão com o Github");
+                throw new Error(
+                    `Erro ao buscar usuário: ${response.status} ${response.statusText}`
+                );
         }
+
+    } catch (error: any) {
+
+        if (error.name === "TypeError") {
+            throw new Error(
+                "Erro de conexão com o GitHub."
+            );
+        }
+
         throw error;
-       // console.log(error);
     }
 }
 
-async function lerArquivo() {
+async function lerArquivo(): Promise<UsuarioGithub[]> {
+
     try {
-        const usuariosText = await readFile(`./database.json`, {encoding: "utf-8"});
+
+        const usuariosText = await readFile(
+            "./database.json",
+            {
+                encoding: "utf-8"
+            }
+        );
+
         return JSON.parse(usuariosText);
-    } catch (error) {
-        //
+
+    } catch (error: any) {
+
         if (error.code === "ENOENT") {
-            return [];//sem isso, pode gerar erro undefined
-        } 
-        
-        console.error("Arquivo corrompido, não foi possível ler os dados.");
+            return [];
+        }
+
+        throw new Error(
+            "Arquivo corrompido. Não foi possível ler os dados."
+        );
     }
 }
 
-async function salvarArquivo(usuario) {    
-    const usuarios = await lerArquivo();  
+async function salvarArquivo(
+    usuario: UsuarioGithub
+): Promise<void> {
 
-    if (!usuarios) {
-		await writeFile(`./database.json`, JSON.stringify([usuario]), {
-			encoding: "utf-8",
-		});
-	}
-    
-        const usuarioExisteArquivo = usuarios.some((usuarioArquivo) => usuarioArquivo.id  === usuario.id); //some faz o equivalente ao FOR
-        if (usuarioExisteArquivo) {
-            console.log(`Usuário informado "${usuario.login}" já existe e não será gravado no arquivo.`);
-            return;
-        }       
+    const usuarios = await lerArquivo();
 
-        usuarios.push(usuario);
+    const usuarioExisteArquivo = usuarios.some(
+        (usuarioArquivo) =>
+            usuarioArquivo.id === usuario.id
+    );
 
-        await writeFile(`./database.json`, JSON.stringify(usuarios), {
-            encoding: "utf-8",
-        });
-        
-        console.log(`Usuário "${usuario.login}" de "${usuario.name ? usuario.name : "-Nome não informado-"}" incluído no arquivo com sucesso!`);
+    if (usuarioExisteArquivo) {
+
+        console.log(
+            `Usuário "${usuario.login}" já existe no arquivo.`
+        );
+
+        return;
+    }
+
+    usuarios.push({
+        id: usuario.id,
+        login: usuario.login,
+        name: usuario.name,
+        html_url: usuario.html_url,
+        public_repos: usuario.public_repos,
+        followers: usuario.followers
+    });
+
+    await writeFile(
+        "./database.json",
+        JSON.stringify(usuarios, null, 2),
+        {
+            encoding: "utf-8"
+        }
+    );
+
+    console.log(
+        `\nUsuário "${usuario.login}" salvo com sucesso!`
+    );
 }
 
-async function main(){
-    const interfaceConsole = createInterface(stdin, stdout);
+async function main(): Promise<void> {
+
+    const interfaceConsole = createInterface({
+        input: stdin,
+        output: stdout
+    });
 
     try {
-        console.log("\n________________________\n ");
-        console.log(  "BUSCA DE USUÁRIOS GITHUB   ");
-        console.log("\n________________________\n ");
 
-        const respostaOperacao = await interfaceConsole.question("Digite o nome do usuário no GITHUB:\n");
+        console.log("\n===============================");
+        console.log(" BUSCA DE USUÁRIOS GITHUB ");
+        console.log("===============================\n");
 
-        const nomeUsuario = validaUsuario(respostaOperacao);
-                
-        const usuario = await buscarPerfil(nomeUsuario);   
-        
-        const respostaGravar = await interfaceConsole.question(`Usuário "${usuario.login}" encontrado no Github. Deseja gravá-lo no arquivo? (Digite: S ou N):\n`);
+        const respostaOperacao =
+            await interfaceConsole.question(
+                "Digite o nome do usuário no GitHub:\n"
+            );
 
-        if (respostaGravar.trim().toUpperCase() !== "S") {//somente vai aceitar S ou N, nada mais
-            console.log("Você optou por não gravar o usuário. Operação finalizada.");
+        const nomeUsuario =
+            validaUsuario(respostaOperacao);
+
+        const usuario =
+            await buscarPerfil(nomeUsuario);
+
+        console.log("\nUsuário encontrado:\n");
+
+        console.log(
+            `Nome: ${usuario.name ?? "Não informado"}`
+        );
+
+        console.log(
+            `Login: ${usuario.login}`
+        );
+
+        console.log(
+            `GitHub: ${usuario.html_url}`
+        );
+
+        console.log(
+            `Repositórios Públicos: ${usuario.public_repos}`
+        );
+
+        console.log(
+            `Seguidores: ${usuario.followers}`
+        );
+
+        const respostaGravar =
+            await interfaceConsole.question(
+                "\nDeseja salvar este usuário no arquivo? (S/N):\n"
+            );
+
+        const resposta =
+            respostaGravar.trim().toUpperCase();
+
+        if (resposta !== "S" && resposta !== "N") {
+            throw new Error(
+                "Resposta inválida. Digite apenas S ou N."
+            );
+        }
+
+        if (resposta === "N") {
+
+            console.log(
+                "\nOperação finalizada sem salvar."
+            );
+
             return;
-        }       
-        
+        }
+
         await salvarArquivo(usuario);
-    
-    } catch (error) {
-        console.log("\nFalha ao realizar o processo: " + error.message);
+
+    } catch (error: any) {
+
+        console.log(
+            `\nFalha ao realizar o processo: ${error.message}`
+        );
+
     } finally {
+
         interfaceConsole.close();
     }
 }

@@ -1,24 +1,24 @@
 {
   "name": "repositorio-teste",
   "version": "1.0.0",
-  "description": "",
+  "description": "Busca usuários do GitHub e salva em arquivo JSON",
   "main": "dist/main.js",
-  "scripts": {
-    "start": "node ./src/main.ts",
-    "start:dev": "node --watch ./src/main.ts",
-    "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git@github-senai.com:marcomoura-senai/repositorio-teste.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "module",
+  "scripts": {
+    "dev": "npx ts-node src/main.ts",
+    "build": "tsc",
+    "start": "node dist/main.js"
+  },
+  "keywords": [
+    "typescript",
+    "node",
+    "github-api"
+  ],
+  "author": "Carlos Eduardo",
+  "license": "ISC",
   "devDependencies": {
     "@types/node": "^25.9.1",
+    "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
   }
 }
