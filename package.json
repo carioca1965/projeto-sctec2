@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "description": "Busca usuários do GitHub e salva em arquivo JSON",
   "main": "dist/main.js",
-  "type": "module",
+  
   "scripts": {
-    "dev": "npx ts-node src/main.ts",
-    "build": "tsc",
-    "start": "node dist/main.js"
-  },
+  "dev": "npx ts-node --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} src/main.ts",
+  "build": "tsc",
+  "start": "node dist/main.js"
+},
   "keywords": [
     "typescript",
     "node",
